@@ -1,42 +1,58 @@
 import { useState } from "react";
-import { createActivity } from "../api/activities";
 import { useAuth } from "../auth/AuthContext";
+import { createActivity } from "../api/activities"; // Assuming you have this function
 
-/** Form for a user to create a new activity with a name and description. */
-export default function ActivityForm({ syncActivities }) {
-  const { token } = useAuth();
-
+// Renamed from syncActivities to refreshActivities for clarity in usage
+export default function ActivityForm({ syncActivities: refreshActivities }) {
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
   const [error, setError] = useState(null);
+  const { token } = useAuth(); // Assuming token is needed for creation
 
-  const tryCreateActivity = async (formData) => {
+  const handleSubmit = async (e) => {
+    e.preventDefault();
     setError(null);
 
-    const name = formData.get("name");
-    const description = formData.get("description");
+    if (!token) {
+      setError("You must be logged in to create an activity.");
+      return;
+    }
 
     try {
-      await createActivity(token, { name, description });
-      syncActivities();
-    } catch (e) {
-      setError(e.message);
+      await createActivity({ name, description }, token);
+      await refreshActivities();
+
+      setName("");
+      setDescription("");
+    } catch (err) {
+      setError("Failed to create activity: " + err.message);
     }
   };
 
   return (
-    <>
+    <section>
       <h2>Add a new activity</h2>
-      <form action={tryCreateActivity}>
-        <label>
-          Name
-          <input type="text" name="name" />
-        </label>
-        <label>
-          Description
-          <input type="text" name="description" />
-        </label>
-        <button>Add activity</button>
+      {error && <p style={{ color: "red" }}>{error}</p>}
+      <form onSubmit={handleSubmit}>
+        <label htmlFor="activity-name">Name</label>
+        <input
+          type="text"
+          id="activity-name"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          required
+        />
+        <br />
+        <label htmlFor="activity-description">Description</label>
+        <input
+          type="text"
+          id="activity-description"
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+        />
+        <br />
+        <button type="submit">[Add activity]</button>
       </form>
-      {error && <p role="alert">{error}</p>}
-    </>
+    </section>
   );
 }
